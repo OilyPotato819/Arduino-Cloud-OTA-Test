@@ -1,5 +1,5 @@
-#include <Arduino.h>
 #include "Arduino_LED_Matrix.h"
+#include <ArduinoIoTCloud.h>
 
 struct Snowflake
 {
@@ -7,9 +7,13 @@ struct Snowflake
   byte y;
 };
 
+KVStore kvStore;
+WiFiConnectionHandler ArduinoIoTPreferredConnection;
+NetworkConfiguratorClass NetworkConfigurator(ArduinoIoTPreferredConnection);
+
 ArduinoLEDMatrix matrix;
-Snowflake snow1 = {7, 1};
-Snowflake snow2 = {11, 6};
+const byte SNOWFLAKE_NUM = 3;
+Snowflake snow[SNOWFLAKE_NUM] = {{7, 1}, {11, 6}, {10, 3}};
 byte frame[8][12] = {
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -20,22 +24,36 @@ byte frame[8][12] = {
     {0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0},
     {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0}};
 
-void setup()
-{
-  matrix.begin();
-}
-
 void drawSnowflake(Snowflake &snow);
 void updateSnowflake(Snowflake &snow);
 void resetSnowflake(Snowflake &snow);
 
+void setup()
+{
+  NetworkConfigurator.setStorage(kvStore);
+  ArduinoCloud.setConfigurator(NetworkConfigurator);
+  ArduinoCloud.begin(ArduinoIoTPreferredConnection);
+
+  randomSeed(analogRead(0));
+  matrix.begin();
+}
+
 void loop()
 {
-  drawSnowflake(snow1);
-  drawSnowflake(snow2);
+  ArduinoCloud.update();
+
+  for (int i = 0; i < SNOWFLAKE_NUM; i++)
+  {
+    drawSnowflake(snow[i]);
+  }
+
   matrix.renderBitmap(frame, 8, 12);
-  updateSnowflake(snow1);
-  updateSnowflake(snow2);
+
+  for (int i = 0; i < SNOWFLAKE_NUM; i++)
+  {
+    updateSnowflake(snow[i]);
+  }
+
   delay(100);
 }
 
